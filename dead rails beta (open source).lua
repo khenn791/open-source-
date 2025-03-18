@@ -6,28 +6,37 @@
 -- https://discord.gg/UgQAPcBtpy
 -- https://discord.gg/UgQAPcBtpy
 
-local WindUI = loadstring(game:HttpGet("https://tree-hub.vercel.app/api/UI/WindUI"))()
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-local Window = WindUI:CreateWindow({
-    Title = "khen.cc | Dead Rails",
-    Icon = "target",
-    Author = "by khen.cc",
-    Folder = "DeadRails",
-    Size = UDim2.fromOffset(300, 200),
-    Transparent = true,
-    Theme = "Dark",
-    SideBarWidth = 120,
+local Window = Rayfield:CreateWindow({
+   Name = "khen.cc | Dead Rails",
+   Icon = 0,
+   LoadingTitle = "Dead Rails",
+   LoadingSubtitle = "by khen.cc",
+   Theme = "Default",
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false,
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = nil,
+      FileName = "khennn"
+   },
+   Discord = {
+      Enabled = false,
+      Invite = "noinvitelink",
+      RememberJoins = true
+   },
+   KeySystem = false,
+   KeySettings = {
+      Title = "Untitled",
+      Subtitle = "Key System",
+      Note = "No method of obtaining the key is provided",
+      FileName = "Key",
+      SaveKey = true,
+      GrabKeyFromSite = false,
+      Key = {"nini"}
+   }
 })
-
-local Tabs = {
-    AimbotTab = Window:Tab({ Title = "Aimbot", Icon = "crosshair", Desc = "Aimbot settings." }),
-    BringsTab = Window:Tab({ Title = "Brings", Icon = "box", Desc = "Item teleportation." }),
-    ESPTab = Window:Tab({ Title = "ESP", Icon = "eyes", Desc = "Visual enhancements." }),
-    MovementTab = Window:Tab({ Title = "Movement", Icon = "user", Desc = "Player movement tweaks." }),
-    ReportTab = Window:Tab({ Title = "Report Bugs", Icon = "bug", Desc = "Report issues." }),
-}
-
-Window:SelectTab(1)
 
 -- Services
 local RunService = game:GetService("RunService")
@@ -35,6 +44,14 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Cam = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
+local rs = game:GetService("ReplicatedStorage")
+local plr = LocalPlayer
+
+-- Tạo các tab
+local AimbotTab = Window:CreateTab("Aimbot", "Crosshair") -- Icon crosshair
+local BringsTab = Window:CreateTab("Brings", "Package") -- Icon package
+local ESPTab = Window:CreateTab("ESP", "Eye") -- Icon eye
+local MovementTab = Window:CreateTab("Movement", "User") -- Icon user
 
 -- Aimbot Variables
 local validNPCs = {}
@@ -50,25 +67,25 @@ local fovRadius = 100
 local aimbotEnabled = false
 local aimbotKey = Enum.UserInputType.MouseButton2
 
--- ESP Variables (Old)
+-- ESP Variables
 local ESPHandles = {}
 local ESPEnabled = false
-
--- ESP Variables (New)
 local ESPPlayerEnabled = false
 local ESPZombyEnabled = false
 local ESPColor = Color3.fromRGB(255, 0, 0)
 
--- Movement Variables (Old)
+-- Movement Variables
 local speedHackEnabled = false
 local speedValue = 16
 local jumpHackEnabled = false
 local jumpMultiplier = 1.5
 local noClipEnabled = false
-
--- Movement Variables (New)
 local infiniteJumpEnabled = false
 local flyEnabled = false
+
+-- Kill Aura Variables (Mới)
+local auraOn = false
+local killDist = 15
 
 -- Helper Functions
 local function updateFOV()
@@ -121,7 +138,9 @@ end)
 
 workspace.DescendantRemoving:Connect(function(descendant)
     if isNPC(descendant) then
-        for i = #validNPCs, 1, -1 do
+        for i =
+
+ #validNPCs, 1, -1 do
             if validNPCs[i] == descendant then
                 table.remove(validNPCs, i)
                 break
@@ -237,13 +256,6 @@ local function UpdateESP()
     end
 end
 
-local function AutoUpdateESP()
-    while ESPEnabled do
-        UpdateESP()
-        wait()
-    end
-end
-
 local function AddESPForPlayer(player)
     if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") or player == LocalPlayer then return end
     local character = player.Character
@@ -322,10 +334,7 @@ end
 
 local function applyJumpHack()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        local humanoid = LocalPlayer.Character.Humanoid
-        if humanoid:FindFirstChild("JumpHeight") then
-            humanoid.JumpHeight = jumpHackEnabled and (7.2 * jumpMultiplier) or 7.2
-        end
+        LocalPlayer.Character.Humanoid.JumpHeight = jumpHackEnabled and (7.2 * jumpMultiplier) or 7.2
     end
 end
 
@@ -336,6 +345,45 @@ local function applyNoClip()
                 part.CanCollide = not noClipEnabled
             end
         end
+    end
+end
+
+-- Kill Aura Functions (Mới)
+local function getNearestNPC()
+    local root = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    local nearest, minDist = nil, math.huge
+    for _, npc in ipairs(workspace:GetDescendants()) do
+        if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") and npc:FindFirstChild("Humanoid") and not game.Players:GetPlayerFromCharacter(npc) then
+            local hrp, hum = npc.HumanoidRootPart, npc.Humanoid
+            local dist = (hrp.Position - root.Position).Magnitude
+            if hum.Health > 0 and dist < minDist and dist <= killDist then
+                nearest, minDist = npc, dist
+            end
+        end
+    end
+    return nearest
+end
+
+local function dragAndKill(npc)
+    if not npc then return end
+    local hum = npc:FindFirstChild("Humanoid")
+    if hum and hum.Health <= 0 then return end
+
+    local dragRemote = rs:FindFirstChild("Shared") and rs.Shared:FindFirstChild("Remotes") and rs.Shared.Remotes:FindFirstChild("RequestStartDrag")
+    if dragRemote then
+        dragRemote:FireServer(npc)
+        task.wait(0.5)
+        if hum and hum.Health > 0 then npc:BreakJoints() end
+    end
+end
+
+local function killAuraLoop()
+    while auraOn do
+        local target = getNearestNPC()
+        if target then dragAndKill(target) end
+        task.wait(0.2)
     end
 end
 
@@ -370,13 +418,6 @@ RunService.Heartbeat:Connect(function(dt)
             end
         end
     end
-    if infiniteJumpEnabled then
-        UserInputService.JumpRequest:Connect(function()
-            if LocalPlayer.Character then
-                LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
-            end
-        end)
-    end
 end)
 
 RunService.Stepped:Connect(function()
@@ -398,20 +439,25 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 -- Aimbot Tab
-Tabs.AimbotTab:Toggle({
-    Title = "Enable Aimbot",
-    Default = false,
+AimbotTab:CreateToggle({
+    Name = "Enable Aimbot",
+    CurrentValue = false,
     Callback = function(Value)
         aimbotEnabled = Value
         fovCircle.Visible = Value
+        Rayfield:Notify({
+            Title = "Aimbot",
+            Content = Value and "Aimbot enabled" or "Aimbot disabled",
+            Duration = 2
+        })
     end
 })
 
-Tabs.AimbotTab:Slider({
-    Title = "FOV Radius",
-    Default = 100,
-    Min = 50,
-    Max = 500,
+AimbotTab:CreateSlider({
+    Name = "FOV Radius",
+    Range = {50, 500},
+    Increment = 10,
+    CurrentValue = 100,
     Callback = function(Value)
         fovRadius = Value
         updateFOV()
@@ -421,34 +467,40 @@ Tabs.AimbotTab:Slider({
 updateFOV()
 
 -- Brings Tab
-local selectedItem = "Select an item"
-Tabs.BringsTab:Dropdown({
-    Title = "Choose Item",
+local itemDropdown
+itemDropdown = BringsTab:CreateDropdown({
+    Name = "Choose Item",
     Options = GetItemNames(),
-    Default = "Select an item",
+    CurrentOption = "Select an item",
     Callback = function(Value)
         selectedItem = Value
     end
 })
 
-Tabs.BringsTab:Button({
-    Title = "Refresh Items",
+BringsTab:CreateButton({
+    Name = "Refresh Items",
     Callback = function()
-        Tabs.BringsTab:Dropdown({
-            Title = "Choose Item",
-            Options = GetItemNames(),
-            Default = selectedItem,
-            Callback = function(Value)
-                selectedItem = Value
-            end
+        local newItems = GetItemNames()
+        itemDropdown:Refresh(newItems, "Select an item")
+        Rayfield:Notify({
+            Title = "Items Refreshed",
+            Content = "Dropdown updated with " .. #newItems .. " items",
+            Duration = 3
         })
     end
 })
 
-Tabs.BringsTab:Button({
-    Title = "Collect Selected Item",
+BringsTab:CreateButton({
+    Name = "Collect Selected Item",
     Callback = function()
-        if selectedItem == "Select an item" then return end
+        if selectedItem == "Select an item" then
+            Rayfield:Notify({
+                Title = "Error",
+                Content = "Please select an item first!",
+                Duration = 3
+            })
+            return
+        end
         local runtimeItems = workspace:FindFirstChild("RuntimeItems")
         if not runtimeItems then return end
         local itemToCollect
@@ -462,12 +514,17 @@ Tabs.BringsTab:Button({
             local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
             local hrp = char:WaitForChild("HumanoidRootPart")
             itemToCollect:SetPrimaryPartCFrame(hrp.CFrame + Vector3.new(0, 1, 0))
+            Rayfield:Notify({
+                Title = "Success",
+                Content = selectedItem .. " collected!",
+                Duration = 3
+            })
         end
     end
 })
 
-Tabs.BringsTab:Button({
-    Title = "Collect All Items",
+BringsTab:CreateButton({
+    Name = "Collect All Items",
     Callback = function()
         local runtimeItems = workspace:FindFirstChild("RuntimeItems")
         if not runtimeItems then return end
@@ -479,66 +536,81 @@ Tabs.BringsTab:Button({
                 item:SetPrimaryPartCFrame(hrp.CFrame + offset)
             end
         end
+        Rayfield:Notify({
+            Title = "Success",
+            Content = "All items collected!",
+            Duration = 3
+        })
     end
 })
 
 -- ESP Tab
-Tabs.ESPTab:Toggle({
-    Title = "ESP Items and Mobs",
-    Default = false,
+ESPTab:CreateToggle({
+    Name = "ESP Items and Mobs",
+    CurrentValue = false,
     Callback = function(Value)
         ESPEnabled = Value
         if Value then
             UpdateESP()
-            coroutine.wrap(AutoUpdateESP)()
+            spawn(function()
+                while ESPEnabled do
+                    UpdateESP()
+                    wait(1)
+                end
+            end)
         else
             ClearESP()
         end
+        Rayfield:Notify({
+            Title = "ESP",
+            Content = Value and "Items and Mobs ESP enabled" or "Items and Mobs ESP disabled",
+            Duration = 2
+        })
     end
 })
 
-Tabs.ESPTab:Toggle({
-    Title = "ESP Players",
-    Default = false,
+ESPTab:CreateToggle({
+    Name = "ESP Players",
+    CurrentValue = false,
     Callback = function(Value)
         ESPPlayerEnabled = Value
     end
 })
 
-Tabs.ESPTab:Toggle({
-    Title = "ESP Zombies",
-    Default = false,
+ESPTab:CreateToggle({
+    Name = "ESP Zombies",
+    CurrentValue = false,
     Callback = function(Value)
         ESPZombyEnabled = Value
     end
 })
 
 -- Movement Tab
-Tabs.MovementTab:Slider({
-    Title = "WalkSpeed",
-    Default = 50,
-    Min = 1,
-    Max = 500,
+MovementTab:CreateSlider({
+    Name = "WalkSpeed",
+    Range = {1, 500},
+    Increment = 1,
+    CurrentValue = 50,
     Callback = function(Value)
         speedValue = Value
         applySpeedHack()
     end
 })
 
-Tabs.MovementTab:Toggle({
-    Title = "Speed Hack",
-    Default = false,
+MovementTab:CreateToggle({
+    Name = "Speed Hack",
+    CurrentValue = false,
     Callback = function(Value)
         speedHackEnabled = Value
         applySpeedHack()
     end
 })
 
-Tabs.MovementTab:Slider({
-    Title = "Jump Height",
-    Default = 50,
-    Min = 10,
-    Max = 500,
+MovementTab:CreateSlider({
+    Name = "Jump Height",
+    Range = {10, 500},
+    Increment = 1,
+    CurrentValue = 50,
     Callback = function(Value)
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.JumpHeight = Value
@@ -546,17 +618,24 @@ Tabs.MovementTab:Slider({
     end
 })
 
-Tabs.MovementTab:Toggle({
-    Title = "Infinite Jump",
-    Default = false,
+MovementTab:CreateToggle({
+    Name = "Infinite Jump",
+    CurrentValue = false,
     Callback = function(Value)
         infiniteJumpEnabled = Value
+        if Value then
+            UserInputService.JumpRequest:Connect(function()
+                if LocalPlayer.Character then
+                    LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+                end
+            end)
+        end
     end
 })
 
-Tabs.MovementTab:Toggle({
-    Title = "Fly",
-    Default = false,
+MovementTab:CreateToggle({
+    Name = "Fly",
+    CurrentValue = false,
     Callback = function(Value)
         flyEnabled = Value
         local char = LocalPlayer.Character
@@ -565,20 +644,26 @@ Tabs.MovementTab:Toggle({
         if Value then
             local speed = 50
             local bodyVelocity = Instance.new("BodyVelocity")
-            bodyVelocity.MaxForce = Vector3.new(400000, 400000, 400000)
-            bodyVelocity.Velocity = Vector3.new(0, speed, 0)
+            bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
             bodyVelocity.Parent = hrp
             local bodyGyro = Instance.new("BodyGyro")
-            bodyGyro.MaxTorque = Vector3.new(400000, 400000, 400000)
+            bodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
             bodyGyro.CFrame = hrp.CFrame
             bodyGyro.Parent = hrp
             spawn(function()
-                while flyEnabled and hrp do
-                    bodyVelocity.Velocity = Vector3.new(0, speed, 0)
-                    wait(0.1)
+                while flyEnabled and hrp and hrp.Parent do
+                    local cam = workspace.CurrentCamera
+                    local moveDirection = Vector3.new(
+                        (UserInputService:IsKeyDown(Enum.KeyCode.D) and 1 or 0) - (UserInputService:IsKeyDown(Enum.KeyCode.A) and 1 or 0),
+                        (UserInputService:IsKeyDown(Enum.KeyCode.Space) and 1 or 0) - (UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) and 1 or 0),
+                        (UserInputService:IsKeyDown(Enum.KeyCode.S) and 1 or 0) - (UserInputService:IsKeyDown(Enum.KeyCode.W) and 1 or 0)
+                    ).Unit
+                    bodyVelocity.Velocity = cam.CFrame:VectorToWorldSpace(moveDirection) * speed
+                    bodyGyro.CFrame = cam.CFrame
+                    wait()
                 end
-                bodyVelocity:Destroy()
-                bodyGyro:Destroy()
+                if bodyVelocity then bodyVelocity:Destroy() end
+                if bodyGyro then bodyGyro:Destroy() end
             end)
         else
             local bodyVelocity = hrp:FindFirstChildOfClass("BodyVelocity")
@@ -589,31 +674,57 @@ Tabs.MovementTab:Toggle({
     end
 })
 
-Tabs.MovementTab:Toggle({
-    Title = "Jump Hack",
-    Default = false,
+MovementTab:CreateToggle({
+    Name = "Jump Hack",
+    CurrentValue = false,
     Callback = function(Value)
         jumpHackEnabled = Value
         applyJumpHack()
     end
 })
 
-Tabs.MovementTab:Slider({
-    Title = "Jump Power Multiplier",
-    Default = 1.5,
-    Min = 1,
-    Max = 5,
+MovementTab:CreateSlider({
+    Name = "Jump Power Multiplier",
+    Range = {1, 5},
+    Increment = 0.1,
+    CurrentValue = 1.5,
     Callback = function(Value)
         jumpMultiplier = Value
         applyJumpHack()
     end
 })
 
-Tabs.MovementTab:Toggle({
-    Title = "NoClip",
-    Default = false,
+MovementTab:CreateToggle({
+    Name = "NoClip",
+    CurrentValue = false,
     Callback = function(Value)
         noClipEnabled = Value
     end
 })
 
+
+MovementTab:CreateToggle({
+    Name = "Kill Aura",
+    CurrentValue = false,
+    Callback = function(Value)
+        auraOn = Value
+        Rayfield:Notify({
+            Title = "Kill Aura",
+            Content = Value and "Kill Aura enabled" or "Kill Aura disabled",
+            Duration = 2
+        })
+        if Value then
+            spawn(killAuraLoop)
+        end
+    end
+})
+
+MovementTab:CreateSlider({
+    Name = "Kill Aura Range",
+    Range = {5, 50},
+    Increment = 1,
+    CurrentValue = 15,
+    Callback = function(Value)
+        killDist = Value
+    end
+})
