@@ -1365,7 +1365,7 @@ function AttackNoCoolDown()
         end
     end
 end
-Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/khenn791/library/refs/heads/main/FluentMs1.txt"))()
+Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/LuaCrack/Library/78b99523c0413609a998e34bc3dda1328f25f63e/LibraryFluent.lua"))()
 Window = Fluent:CreateWindow({
     Title = "Vxeze Hub-Blox Fruit v3 (khen.cc)",
     SubTitle = "| 🤨",
