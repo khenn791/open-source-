@@ -319,7 +319,7 @@ end
 local DiscordLink = DiscordTab:CreateButton({
    Name = "Discord Link",
    Callback = function()
-copyToClipboard("https://discord.gg/E2TqYRsRP4")
+setclipboard("https://discord.gg/6BYsJCueVZ")
 end,
 })
 local PlayerFlySpeedSlider = PlayerTab:CreateSlider({
